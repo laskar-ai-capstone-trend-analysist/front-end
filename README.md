@@ -277,7 +277,7 @@ Project ini menggunakan:
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/) - TypeScript guide
 - [Lucide Icons](https://lucide.dev/) - Icon library
 
-## 📄 License
+<!-- ## 📄 License
 
 Project ini menggunakan [MIT License](LICENSE).
 
@@ -294,4 +294,4 @@ Project ini menggunakan [MIT License](LICENSE).
 
 ---
 
-⭐ **Jika project ini membantu, berikan star di repository!** ⭐
+⭐ **Jika project ini membantu, berikan star di repository!** ⭐ -->
