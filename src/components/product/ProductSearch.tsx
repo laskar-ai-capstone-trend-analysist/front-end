@@ -1,16 +1,20 @@
 // src/components/product/ProductSearch.tsx
-import React, { useState } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
+import React, { useState, useCallback } from 'react';
+import { Filter, RotateCcw, TrendingUp } from 'lucide-react';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { Select } from '@/components/ui/Select';
+import { FilterBadge } from '@/components/ui/FilterBadge';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { cn } from '@/lib/utils';
 import { Category } from '@/lib/types';
-import { Search, Filter } from 'lucide-react';
 
 interface ProductSearchProps {
   onSearch: (query: string) => void;
   onCategoryFilter: (categoryId: number | null) => void;
   categories: Category[];
   isLoading?: boolean;
+  className?: string;
 }
 
 export const ProductSearch: React.FC<ProductSearchProps> = ({
@@ -18,80 +22,182 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({
   onCategoryFilter,
   categories,
   isLoading = false,
+  className,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [activeFilters, setActiveFilters] = useState<{
+    search: string;
+    category: number | null;
+  }>({
+    search: '',
+    category: null,
+  });
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(searchQuery);
+  const [showFilters, setShowFilters] = useState(false);
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      setActiveFilters((prev) => ({ ...prev, search: query }));
+      onSearch(query);
+    },
+    [onSearch]
+  );
+
+  const handleCategoryChange = useCallback(
+    (categoryId: string | number) => {
+      const numericId = categoryId === 'all' ? null : Number(categoryId);
+      setActiveFilters((prev) => ({ ...prev, category: numericId }));
+      onCategoryFilter(numericId);
+    },
+    [onCategoryFilter]
+  );
+
+  const handleClearSearch = () => {
+    setActiveFilters((prev) => ({ ...prev, search: '' }));
+    onSearch('');
   };
 
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    onCategoryFilter(categoryId ? parseInt(categoryId) : null);
+  const handleClearCategory = () => {
+    setActiveFilters((prev) => ({ ...prev, category: null }));
+    onCategoryFilter(null);
   };
 
-  const resetFilters = () => {
-    setSearchQuery('');
-    setSelectedCategory('');
+  const handleClearAll = () => {
+    setActiveFilters({ search: '', category: null });
     onSearch('');
     onCategoryFilter(null);
   };
 
+  const categoryOptions = [
+    { value: 'all', label: 'Semua Kategori' },
+    ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
+  ];
+
+  const selectedCategory = categories.find(
+    (cat) => cat.id === activeFilters.category
+  );
+  const hasActiveFilters = activeFilters.search || activeFilters.category;
+
   return (
-    <Card>
+    <Card className={cn('p-6 space-y-6', className)}>
+      {/* Header */}
+      <div className='flex items-center justify-between'>
+        <div className='flex items-center gap-3'>
+          <div className='p-2 bg-blue-100 rounded-lg'>
+            <TrendingUp className='w-5 h-5 text-blue-600' />
+          </div>
+          <div>
+            <h2 className='text-lg font-semibold text-gray-900'>
+              Cari & Filter Produk
+            </h2>
+            <p className='text-sm text-gray-500'>
+              Temukan produk trending yang Anda cari
+            </p>
+          </div>
+        </div>
+
+        <Button
+          variant='ghost'
+          size='sm'
+          onClick={() => setShowFilters(!showFilters)}
+          className='lg:hidden'
+        >
+          <Filter className='w-4 h-4' />
+          Filter
+        </Button>
+      </div>
+
+      {/* Search Input */}
       <div className='space-y-4'>
-        <h2 className='text-lg font-semibold text-gray-900 flex items-center gap-2'>
-          <Search className='w-5 h-5' />
-          Cari Produk
-        </h2>
+        <SearchInput
+          placeholder='Cari produk berdasarkan nama...'
+          onSearch={handleSearch}
+          isLoading={isLoading}
+          debounceMs={400}
+        />
 
-        <form onSubmit={handleSearch} className='space-y-4'>
-          {/* Search Input */}
-          <Input
-            type='text'
-            placeholder='Cari produk berdasarkan nama...'
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            icon={<Search className='w-5 h-5 text-gray-400' />}
-          />
-
-          {/* Category Filter */}
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-            <div className='md:col-span-2'>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                Filter Kategori
+        {/* Filters Section */}
+        <div
+          className={cn(
+            'space-y-4 transition-all duration-300',
+            showFilters ? 'block' : 'hidden lg:block'
+          )}
+        >
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+            {/* Category Filter */}
+            <div className='space-y-2'>
+              <label className='text-sm font-medium text-gray-700'>
+                Kategori
               </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                className='block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
-              >
-                <option value=''>Semua Kategori</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id.toString()}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                options={categoryOptions}
+                value={activeFilters.category || 'all'}
+                onChange={handleCategoryChange}
+                placeholder='Pilih kategori...'
+                disabled={isLoading}
+              />
             </div>
 
-            <div className='flex items-end gap-2'>
-              <Button type='submit' disabled={isLoading} className='flex-1'>
-                {isLoading ? 'Mencari...' : 'Cari'}
-              </Button>
+            {/* Additional filters can be added here */}
+            <div className='flex items-end'>
               <Button
-                type='button'
                 variant='outline'
-                onClick={resetFilters}
-                disabled={isLoading}
+                onClick={handleClearAll}
+                disabled={!hasActiveFilters || isLoading}
+                className='w-full lg:w-auto'
+                leftIcon={<RotateCcw className='w-4 h-4' />}
               >
-                <Filter className='w-4 h-4' />
+                Reset Filter
               </Button>
             </div>
           </div>
-        </form>
+        </div>
+
+        {/* Active Filters */}
+        {hasActiveFilters && (
+          <div className='space-y-3'>
+            <div className='text-sm font-medium text-gray-700'>
+              Filter Aktif:
+            </div>
+            <div className='flex flex-wrap gap-2'>
+              {activeFilters.search && (
+                <FilterBadge
+                  label={`Pencarian: "${activeFilters.search}"`}
+                  onRemove={handleClearSearch}
+                  variant='search'
+                />
+              )}
+              {selectedCategory && (
+                <FilterBadge
+                  label={`Kategori: ${selectedCategory.name}`}
+                  onRemove={handleClearCategory}
+                  variant='category'
+                />
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Stats or Tips */}
+      <div className='pt-4 border-t border-gray-100'>
+        <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 text-center'>
+          <div className='space-y-1'>
+            <div className='text-lg font-semibold text-blue-600'>
+              {categories.length}+
+            </div>
+            <div className='text-xs text-gray-500'>Kategori</div>
+          </div>
+          <div className='space-y-1'>
+            <div className='text-lg font-semibold text-green-600'>
+              Real-time
+            </div>
+            <div className='text-xs text-gray-500'>Data Update</div>
+          </div>
+          <div className='space-y-1'>
+            <div className='text-lg font-semibold text-purple-600'>Smart</div>
+            <div className='text-xs text-gray-500'>Search</div>
+          </div>
+        </div>
       </div>
     </Card>
   );
