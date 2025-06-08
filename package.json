@@ -3,23 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
+    "type": "module",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "rm -rf .next node_modules/.cache",
     "analyze": "ANALYZE=true npm run build",
     "dev:debug": "NODE_OPTIONS='--inspect' next dev",
-    "test:api": "node scripts/test-api.js",
+    "test:api": "node scripts/test-api.mjs",
     "health-check": "node scripts/health-check.js",
     "quick-start": "node scripts/quick-start.js",
     "build:production": "npm run clean && npm run type-check && npm run lint && npm run build",
     "start:production": "NODE_ENV=production npm run start",
-    "deploy:check": "npm run build:production && npm run health-check"
+    "deploy:check": "npm run build:production && npm run health-check",
+    "check:all": "npm run health-check && npm run test:api"
   },
   "dependencies": {
     "axios": "^1.6.0",
