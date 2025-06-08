@@ -1,22 +1,19 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Remove experimental.turbo configuration as it's now stable
-  // experimental: {
-  //   turbo: {} // This is deprecated
-  // },
-
-  // Standard Next.js configurations
-  typescript: {
-    // Type checking during build
-    ignoreBuildErrors: false,
+  // Enable experimental features
+  experimental: {
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
 
-  eslint: {
-    // ESLint during build
-    ignoreDuringBuilds: false,
-  },
-
+  // Image optimization configuration
   images: {
     remotePatterns: [
       {
@@ -25,10 +22,63 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/img/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.tokopedia.net',
+        port: '',
+        pathname: '/**',
+      },
     ],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  // Other configurations can go here
+  // Environment variables validation
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
+  },
+
+  // Production optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+
+  // API rewrites for development
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${
+          process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+        }/:path*`,
+      },
+    ];
+  },
+
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

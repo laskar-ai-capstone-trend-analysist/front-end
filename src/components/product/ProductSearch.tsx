@@ -1,5 +1,5 @@
 // src/components/product/ProductSearch.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Filter, RotateCcw, TrendingUp } from 'lucide-react';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Select } from '@/components/ui/Select';
@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 import { Category } from '@/lib/types';
+import { useCategories } from '@/hooks/useCategories';
 
 interface ProductSearchProps {
   onSearch: (query: string) => void;
   onCategoryFilter: (categoryId: number | null) => void;
-  categories: Category[];
   isLoading?: boolean;
   className?: string;
 }
@@ -20,19 +20,33 @@ interface ProductSearchProps {
 export const ProductSearch: React.FC<ProductSearchProps> = ({
   onSearch,
   onCategoryFilter,
-  categories,
   isLoading = false,
   className,
 }) => {
+  const [showFilters, setShowFilters] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{
-    search: string;
     category: number | null;
+    search: string;
   }>({
-    search: '',
     category: null,
+    search: '',
   });
 
-  const [showFilters, setShowFilters] = useState(false);
+  const { categories, loading: categoriesLoading } = useCategories();
+
+  // Create category options for Select component
+  const categoryOptions = useMemo(() => {
+    const options = [{ label: 'Semua Kategori', value: 'all' }];
+
+    categories.forEach((category) => {
+      options.push({
+        label: category.name,
+        value: category.id.toString(),
+      });
+    });
+
+    return options;
+  }, [categories]);
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -43,63 +57,42 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({
   );
 
   const handleCategoryChange = useCallback(
-    (categoryId: string | number) => {
-      const numericId = categoryId === 'all' ? null : Number(categoryId);
-      setActiveFilters((prev) => ({ ...prev, category: numericId }));
-      onCategoryFilter(numericId);
+    (value: string | number) => {
+      const categoryId = value === 'all' ? null : Number(value);
+      setActiveFilters((prev) => ({ ...prev, category: categoryId }));
+      onCategoryFilter(categoryId);
     },
     [onCategoryFilter]
   );
 
-  const handleClearSearch = () => {
-    setActiveFilters((prev) => ({ ...prev, search: '' }));
-    onSearch('');
-  };
-
-  const handleClearCategory = () => {
-    setActiveFilters((prev) => ({ ...prev, category: null }));
-    onCategoryFilter(null);
-  };
-
-  const handleClearAll = () => {
-    setActiveFilters({ search: '', category: null });
+  const clearAllFilters = () => {
+    setActiveFilters({ category: null, search: '' });
     onSearch('');
     onCategoryFilter(null);
   };
 
-  const categoryOptions = [
-    { value: 'all', label: 'Semua Kategori' },
-    ...categories.map((cat) => ({ value: cat.id, label: cat.name })),
-  ];
-
-  const selectedCategory = categories.find(
-    (cat) => cat.id === activeFilters.category
-  );
-  const hasActiveFilters = activeFilters.search || activeFilters.category;
+  const hasActiveFilters =
+    activeFilters.category !== null || activeFilters.search.trim() !== '';
 
   return (
-    <Card className={cn('p-6 space-y-6', className)}>
+    <Card className={cn('p-6 bg-white/95 backdrop-blur-sm', className)}>
       {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-3'>
-          <div className='p-2 bg-blue-100 rounded-lg'>
-            <TrendingUp className='w-5 h-5 text-blue-600' />
-          </div>
-          <div>
-            <h2 className='text-lg font-semibold text-gray-900'>
-              Cari & Filter Produk
-            </h2>
-            <p className='text-sm text-gray-500'>
-              Temukan produk trending yang Anda cari
-            </p>
-          </div>
+      <div className='flex items-center justify-between mb-6'>
+        <div className='space-y-1'>
+          <h2 className='text-xl font-bold text-gray-900'>
+            Cari & Filter Produk
+          </h2>
+          <p className='text-sm text-gray-600'>
+            Temukan produk yang Anda cari dengan mudah
+          </p>
         </div>
 
         <Button
-          variant='ghost'
+          variant='outline'
           size='sm'
           onClick={() => setShowFilters(!showFilters)}
           className='lg:hidden'
+          disabled={isLoading}
         >
           <Filter className='w-4 h-4' />
           Filter
@@ -122,7 +115,7 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({
             showFilters ? 'block' : 'hidden lg:block'
           )}
         >
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
             {/* Category Filter */}
             <div className='space-y-2'>
               <label className='text-sm font-medium text-gray-700'>
@@ -130,74 +123,123 @@ export const ProductSearch: React.FC<ProductSearchProps> = ({
               </label>
               <Select
                 options={categoryOptions}
-                value={activeFilters.category || 'all'}
+                value={activeFilters.category?.toString() || 'all'}
                 onChange={handleCategoryChange}
                 placeholder='Pilih kategori...'
-                disabled={isLoading}
+                disabled={isLoading || categoriesLoading}
               />
             </div>
 
-            {/* Additional filters can be added here */}
-            <div className='flex items-end'>
-              <Button
-                variant='outline'
-                onClick={handleClearAll}
-                disabled={!hasActiveFilters || isLoading}
-                className='w-full lg:w-auto'
-                leftIcon={<RotateCcw className='w-4 h-4' />}
-              >
-                Reset Filter
-              </Button>
+            {/* Search Statistics */}
+            <div className='space-y-2 lg:col-span-2'>
+              <label className='text-sm font-medium text-gray-700'>
+                Status Pencarian
+              </label>
+              <div className='flex items-center gap-4 p-3 bg-gray-50 rounded-lg'>
+                <div className='flex items-center gap-2'>
+                  <div
+                    className={cn(
+                      'w-2 h-2 rounded-full',
+                      isLoading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
+                    )}
+                  />
+                  <span className='text-sm text-gray-600'>
+                    {isLoading ? 'Mencari...' : 'Siap'}
+                  </span>
+                </div>
+
+                {hasActiveFilters && (
+                  <div className='flex items-center gap-2'>
+                    <span className='text-sm text-gray-600'>Filter aktif</span>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={clearAllFilters}
+                      disabled={isLoading}
+                      className='h-6 px-2 text-xs'
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Active Filters Display */}
+          {hasActiveFilters && (
+            <div className='flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200'>
+              <span className='text-sm font-medium text-gray-700'>
+                Filter aktif:
+              </span>
+
+              {activeFilters.search && (
+                <span className='inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full'>
+                  <Search className='w-3 h-3' />"{activeFilters.search}"
+                  <button
+                    onClick={() => handleSearch('')}
+                    className='ml-1 hover:bg-blue-200 rounded-full p-0.5'
+                  >
+                    <X className='w-3 h-3' />
+                  </button>
+                </span>
+              )}
+
+              {activeFilters.category && (
+                <span className='inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full'>
+                  <Tag className='w-3 h-3' />
+                  {
+                    categories.find((c) => c.id === activeFilters.category)
+                      ?.name
+                  }
+                  <button
+                    onClick={() => handleCategoryChange('all')}
+                    className='ml-1 hover:bg-green-200 rounded-full p-0.5'
+                  >
+                    <X className='w-3 h-3' />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Active Filters */}
-        {hasActiveFilters && (
-          <div className='space-y-3'>
-            <div className='text-sm font-medium text-gray-700'>
-              Filter Aktif:
-            </div>
+        {/* Quick Category Buttons */}
+        {!categoriesLoading && categories.length > 0 && (
+          <div className='space-y-2'>
+            <label className='text-sm font-medium text-gray-700'>
+              Kategori Populer
+            </label>
             <div className='flex flex-wrap gap-2'>
-              {activeFilters.search && (
-                <FilterBadge
-                  label={`Pencarian: "${activeFilters.search}"`}
-                  onRemove={handleClearSearch}
-                  variant='search'
-                />
-              )}
-              {selectedCategory && (
-                <FilterBadge
-                  label={`Kategori: ${selectedCategory.name}`}
-                  onRemove={handleClearCategory}
-                  variant='category'
-                />
+              {categories.slice(0, 6).map((category) => (
+                <Button
+                  key={category.id}
+                  variant={
+                    activeFilters.category === category.id
+                      ? 'default'
+                      : 'outline'
+                  }
+                  size='sm'
+                  onClick={() => handleCategoryChange(category.id)}
+                  disabled={isLoading}
+                  className='text-xs'
+                >
+                  {category.name}
+                </Button>
+              ))}
+              {categories.length > 6 && (
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={() => setShowFilters(true)}
+                  className='text-xs text-gray-500'
+                >
+                  +{categories.length - 6} lainnya
+                </Button>
               )}
             </div>
           </div>
         )}
-      </div>
-
-      {/* Quick Stats or Tips */}
-      <div className='pt-4 border-t border-gray-100'>
-        <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 text-center'>
-          <div className='space-y-1'>
-            <div className='text-lg font-semibold text-blue-600'>
-              {categories.length}+
-            </div>
-            <div className='text-xs text-gray-500'>Kategori</div>
-          </div>
-          <div className='space-y-1'>
-            <div className='text-lg font-semibold text-green-600'>
-              Real-time
-            </div>
-            <div className='text-xs text-gray-500'>Data Update</div>
-          </div>
-          <div className='space-y-1'>
-            <div className='text-lg font-semibold text-purple-600'>Smart</div>
-            <div className='text-xs text-gray-500'>Search</div>
-          </div>
-        </div>
       </div>
     </Card>
   );

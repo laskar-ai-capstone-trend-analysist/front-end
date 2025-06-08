@@ -6,137 +6,87 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Product } from '@/lib/types';
+import { motion } from 'framer-motion';
+import { useCategories } from '@/hooks/useCategories';
 
 interface ProductCardProps {
   product: Product;
-  onViewDetails: (product: Product) => void;
-  priority?: boolean;
+  onClick?: () => void;
+  showRating?: boolean;
   className?: string;
-  style?: React.CSSProperties; // Tambahkan ini
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
-  onViewDetails,
+  onClick,
+  showRating = true,
   className,
-  priority = false,
 }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const { getCategoryName } = useCategories();
 
-  const hasDiscount =
-    product.originalPrice > 0 && product.originalPrice > product.currentPrice;
-  const discountPercentage = hasDiscount
-    ? Math.round(
-        ((product.originalPrice - product.currentPrice) /
-          product.originalPrice) *
-          100
-      )
-    : 0;
-
-  const stockStatus =
-    product.stock > 100 ? 'high' : product.stock > 10 ? 'medium' : 'low';
-  const stockColor = {
-    high: 'text-green-600',
-    medium: 'text-yellow-600',
-    low: 'text-red-600',
-  };
-
-  const handleImageLoad = () => setImageLoaded(true);
-  const handleImageError = () => setImageError(true);
+  const hasDiscount = product.originalPrice > product.currentPrice;
+  const isLowStock = product.stock < 10;
 
   return (
-    <Card
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.3 }}
       className={cn(
-        'group relative overflow-hidden transition-all duration-300',
-        'hover:shadow-xl hover:-translate-y-2 cursor-pointer',
-        'border-gray-200 hover:border-blue-300',
+        'group bg-white rounded-2xl shadow-sm border border-gray-100',
+        'hover:shadow-xl hover:border-blue-200 transition-all duration-300',
+        'cursor-pointer overflow-hidden',
         className
       )}
-      padding='none'
-      onClick={() => onViewDetails(product)}
+      onClick={onClick}
     >
-      {/* Image Container */}
-      <div className='relative overflow-hidden'>
-        {/* Discount Badge */}
-        {hasDiscount && (
-          <div className='absolute top-3 left-3 z-10'>
-            <div className='bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1'>
-              <Zap className='w-3 h-3' />-{discountPercentage}%
-            </div>
-          </div>
-        )}
+      {/* Product Image */}
+      <div className='relative aspect-square overflow-hidden bg-gray-50'>
+        <img
+          src={product.imgUrl}
+          alt={product.name}
+          className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
+        />
 
-        {/* Stock Badge */}
-        <div className='absolute top-3 right-3 z-10'>
-          <div
-            className={cn(
-              'bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1',
-              stockColor[stockStatus]
-            )}
-          >
-            <Package className='w-3 h-3' />
-            {product.stock}
-          </div>
+        {/* Badges */}
+        <div className='absolute top-3 left-3 flex flex-col gap-2'>
+          {hasDiscount && (
+            <span className='px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-md'>
+              -{product.discount.toFixed(0)}%
+            </span>
+          )}
+          {isLowStock && (
+            <span className='px-2 py-1 bg-orange-500 text-white text-xs font-medium rounded-md'>
+              Stok Terbatas
+            </span>
+          )}
         </div>
 
-        {/* Image with Next.js Image component */}
-        <div className='relative w-full h-64 bg-gray-100'>
-          {!imageError ? (
-            <>
-              {!imageLoaded && (
-                <div className='absolute inset-0 bg-gray-200 animate-pulse rounded-t-xl' />
-              )}
-              <Image
-                src={product.imgUrl}
-                alt={product.name}
-                fill
-                className={cn(
-                  'object-cover transition-all duration-500',
-                  'group-hover:scale-110',
-                  imageLoaded ? 'opacity-100' : 'opacity-0'
-                )}
-                priority={priority}
-                onLoad={handleImageLoad}
-                onError={handleImageError}
-                sizes='(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw'
-              />
-            </>
-          ) : (
-            <div className='w-full h-full flex items-center justify-center bg-gray-100 text-gray-400'>
-              <Package className='w-12 h-12' />
-            </div>
-          )}
+        {/* Category Badge */}
+        <div className='absolute top-3 right-3'>
+          <span className='px-2 py-1 bg-blue-500/90 text-white text-xs font-medium rounded-md backdrop-blur-sm'>
+            {getCategoryName(product.categoryId)}
+          </span>
+        </div>
 
-          {/* Overlay on Hover */}
-          <div
-            className={cn(
-              'absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100',
-              'transition-opacity duration-300 flex items-center justify-center'
-            )}
+        {/* Quick View Button */}
+        <div className='absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center'>
+          <Button
+            variant='outline'
+            size='sm'
+            className='opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 backdrop-blur-sm'
           >
-            <div className='transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300'>
-              <Button
-                variant='secondary'
-                size='sm'
-                leftIcon={<Eye className='w-4 h-4' />}
-                className='bg-white/90 text-gray-900 hover:bg-white'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewDetails(product);
-                }}
-              >
-                Lihat Detail
-              </Button>
-            </div>
-          </div>
+            <Eye className='w-4 h-4 mr-2' />
+            Lihat Detail
+          </Button>
         </div>
       </div>
 
-      {/* Content */}
+      {/* Product Info */}
       <div className='p-4 space-y-3'>
         {/* Product Name */}
-        <h3 className='font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors'>
+        <h3 className='font-semibold text-gray-900 line-clamp-2 leading-tight group-hover:text-blue-600 transition-colors'>
           {product.name}
         </h3>
 
@@ -152,52 +102,65 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             )}
           </div>
+
+          {hasDiscount && (
+            <div className='text-xs text-green-600 font-medium'>
+              Hemat{' '}
+              {formatCurrency(product.originalPrice - product.currentPrice)}
+            </div>
+          )}
         </div>
 
         {/* Stock Info */}
         <div className='flex items-center justify-between text-sm'>
-          <div className='flex items-center gap-1'>
-            <Package className='w-4 h-4 text-gray-400' />
-            <span className='text-gray-600'>
-              Stok:{' '}
-              <span className={cn('font-medium', stockColor[stockStatus])}>
-                {product.stock}
-              </span>
-            </span>
+          <div className='flex items-center gap-1 text-gray-600'>
+            <Package className='w-4 h-4' />
+            <span>Stok: {product.stock}</span>
           </div>
 
-          {/* Rating Placeholder */}
+          {/* Stock Status Indicator */}
           <div className='flex items-center gap-1'>
-            <Star className='w-4 h-4 text-yellow-400 fill-current' />
-            <span className='text-gray-600'>
-              4.{Math.floor(Math.random() * 10)}
+            <div
+              className={cn(
+                'w-2 h-2 rounded-full',
+                product.stock > 50
+                  ? 'bg-green-500'
+                  : product.stock > 10
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
+              )}
+            />
+            <span
+              className={cn(
+                'text-xs font-medium',
+                product.stock > 50
+                  ? 'text-green-600'
+                  : product.stock > 10
+                  ? 'text-yellow-600'
+                  : 'text-red-600'
+              )}
+            >
+              {product.stock > 50
+                ? 'Tersedia'
+                : product.stock > 10
+                ? 'Terbatas'
+                : 'Hampir Habis'}
             </span>
           </div>
         </div>
 
         {/* Action Button */}
         <Button
-          variant='primary'
-          size='sm'
-          className='w-full group-hover:shadow-lg transition-shadow'
-          leftIcon={<ShoppingCart className='w-4 h-4' />}
+          className='w-full mt-4 group-hover:bg-blue-600 transition-colors'
           onClick={(e) => {
             e.stopPropagation();
-            onViewDetails(product);
+            onClick?.();
           }}
         >
+          <ShoppingCart className='w-4 h-4 mr-2' />
           Lihat Produk
         </Button>
       </div>
-
-      {/* Trending Indicator */}
-      {Math.random() > 0.7 && (
-        <div className='absolute bottom-4 right-4'>
-          <div className='bg-gradient-to-r from-orange-400 to-red-500 text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse'>
-            🔥 Trending
-          </div>
-        </div>
-      )}
-    </Card>
+    </motion.div>
   );
 };

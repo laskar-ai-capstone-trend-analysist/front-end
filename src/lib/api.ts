@@ -1,131 +1,272 @@
 // src/lib/api.ts
-import { Product, Review, Category, TrendData } from './types';
-import { mockProducts, mockCategories, mockReviews } from './mockData';
+import axios from 'axios';
+import { Product, Review, Category, TrendData, SentimentData } from './types';
+import { debug } from './debug';
+import { errorLogger } from './errorLogger';
+import { performanceMonitor } from './performance';
 
-// Simulasi delay untuk API call
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// API Configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-// Mock API functions untuk development
-const useMockData = true; // Set ke false jika sudah ada backend API
+// Create axios instance with base configuration
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
+// Add request interceptor for logging
+api.interceptors.request.use(
+  (config) => {
+    const requestId = `${config.method?.toUpperCase()}_${config.url}_${Date.now()}`;
+    debug.apiCall(config.method || 'GET', config.url || '', config.data);
+    performanceMonitor.start(`api-${requestId}`);
+    
+    // Add request ID to config for response tracking
+    config.metadata = { requestId };
+    return config;
+  },
+  (error) => {
+    debug.error('Request interceptor error', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for error handling and logging
+api.interceptors.response.use(
+  (response) => {
+    const requestId = response.config.metadata?.requestId;
+    if (requestId) {
+      const duration = performanceMonitor.end(`api-${requestId}`) || 0;
+      debug.apiResponse(
+        response.config.method || 'GET',
+        response.config.url || '',
+        response.status,
+        duration
+      );
+    }
+    return response;
+  },
+  (error) => {
+    const requestId = error.config?.metadata?.requestId;
+    if (requestId) {
+      performanceMonitor.end(`api-${requestId}`);
+    }
+
+    debug.apiError(
+      error.config?.method || 'GET',
+      error.config?.url || '',
+      error
+    );
+
+    // Log to error logger
+    errorLogger.logApiError(
+      error.config?.method || 'GET',
+      error.config?.url || '',
+      error.response?.status,
+      error.message,
+      {
+        responseData: error.response?.data,
+        requestData: error.config?.data,
+      }
+    );
+
+    console.error('API Error:', error);
+    if (error.response?.status === 500) {
+      throw new Error('Server sedang mengalami gangguan. Silakan coba lagi nanti.');
+    }
+    if (error.code === 'ECONNREFUSED') {
+      throw new Error('Tidak dapat terhubung ke server. Pastikan backend sudah berjalan.');
+    }
+    return Promise.reject(error);
+  }
+);
+
+// API Response interface based on back-end response format
+interface ApiResponse<T> {
+  error: boolean;
+  message: string;
+  data: T;
+}
 
 // Products API
 export const productsApi = {
   getAll: async (): Promise<Product[]> => {
-    if (useMockData) {
-      await delay(500); // Simulasi loading
-      return mockProducts;
+    const operationName = 'productsApi.getAll';
+    try {
+      debug.info(`Starting ${operationName}`);
+      const response = await api.get<ApiResponse<Product[]>>('/getAllProduct');
+      
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      
+      debug.info(`${operationName} completed successfully`, {
+        count: response.data.data.length
+      });
+      
+      return response.data.data;
+    } catch (error) {
+      errorLogger.logApiError('GET', '/getAllProduct', undefined, `${operationName} failed`);
+      console.error(`Error in ${operationName}:`, error);
+      throw error;
     }
-
-    // Real API call (uncomment when backend is ready)
-    // const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    // import axios from 'axios';
-    // const api = axios.create({ baseURL: API_BASE_URL });
-    // const response = await api.get<ApiResponse<Product[]>>('/products');
-    // return response.data.data;
-    return mockProducts;
   },
 
   getById: async (id: number): Promise<Product> => {
-    if (useMockData) {
-      await delay(300);
-      const product = mockProducts.find((p) => p.id === id);
-      if (!product) throw new Error('Product not found');
-      return product;
+    try {
+      const response = await api.get<ApiResponse<Product>>(
+        `/getProductById/${id}`
+      );
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching product by ID:', error);
+      throw error;
     }
-
-    const product = mockProducts.find((p) => p.id === id);
-    if (!product) throw new Error('Product not found');
-    return product;
   },
 
   getByCategory: async (categoryId: number): Promise<Product[]> => {
-    if (useMockData) {
-      await delay(400);
-      return mockProducts.filter((p) => p.categoryId === categoryId);
+    try {
+      const response = await api.get<ApiResponse<Product[]>>(
+        `/getAllProductByCategory`,
+        {
+          params: { category: categoryId.toString() },
+        }
+      );
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching products by category:', error);
+      throw error;
     }
-
-    return mockProducts.filter((p) => p.categoryId === categoryId);
   },
 
   search: async (query: string): Promise<Product[]> => {
-    if (useMockData) {
-      await delay(600);
-      return mockProducts.filter((p) =>
-        p.name.toLowerCase().includes(query.toLowerCase())
-      );
+    try {
+      const response = await api.get<ApiResponse<Product[]>>(`/searchProduct`, {
+        params: { query },
+      });
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error searching products:', error);
+      throw error;
     }
-
-    return mockProducts.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase())
-    );
   },
 };
 
 // Reviews API
 export const reviewsApi = {
-  getByProductId: async (productId: number): Promise<Review[]> => {
-    if (useMockData) {
-      await delay(300);
-      return mockReviews.filter((r) => r.productId === productId);
+  getAll: async (): Promise<Review[]> => {
+    try {
+      const response = await api.get<ApiResponse<Review[]>>('/getAllReview');
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      throw error;
     }
+  },
 
-    return mockReviews.filter((r) => r.productId === productId);
+  getByProductId: async (productId: number): Promise<Review[]> => {
+    try {
+      const response = await api.get<ApiResponse<Review[]>>(
+        `/getAllReviewByProduct`,
+        {
+          params: { product: productId.toString() },
+        }
+      );
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching reviews by product ID:', error);
+      throw error;
+    }
+  },
+
+  getByCategory: async (categoryId: number): Promise<Review[]> => {
+    try {
+      const response = await api.get<ApiResponse<Review[]>>(
+        `/getAllReviewByCategory`,
+        {
+          params: { category: categoryId.toString() },
+        }
+      );
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching reviews by category:', error);
+      throw error;
+    }
   },
 };
 
 // Categories API
 export const categoriesApi = {
   getAll: async (): Promise<Category[]> => {
-    if (useMockData) {
-      await delay(200);
-      return mockCategories;
+    try {
+      const response = await api.get<ApiResponse<Category[]>>(
+        '/getAllCategory'
+      );
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      throw error;
     }
-
-    return mockCategories;
   },
 };
 
-// Trends API
-export const trendsApi = {
-  getTrendsData: async (): Promise<TrendData[]> => {
-    if (useMockData) {
-      await delay(800);
-      // Generate mock trend data
-      const mockTrends: TrendData[] = [
+// Sentiment Analysis API
+export const sentimentApi = {
+  getByProductId: async (productId: number): Promise<SentimentData[]> => {
+    try {
+      const response = await api.get<ApiResponse<SentimentData[]>>(
+        `/getSentimentByProduct`,
         {
-          date: '2024-01-01',
-          searches: 120,
-          productName: 'iPhone 15',
-          categoryId: 3,
-        },
-        {
-          date: '2024-01-02',
-          searches: 150,
-          productName: 'iPhone 15',
-          categoryId: 3,
-        },
-        {
-          date: '2024-01-03',
-          searches: 180,
-          productName: 'iPhone 15',
-          categoryId: 3,
-        },
-        {
-          date: '2024-01-04',
-          searches: 200,
-          productName: 'iPhone 15',
-          categoryId: 3,
-        },
-        {
-          date: '2024-01-05',
-          searches: 175,
-          productName: 'iPhone 15',
-          categoryId: 3,
-        },
-      ];
-      return mockTrends;
+          params: { product: productId.toString() },
+        }
+      );
+      if (response.data.error) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching sentiment data:', error);
+      throw error;
     }
-
-    return [];
   },
 };
+
+// Health check API
+export const healthApi = {
+  check: async (): Promise<boolean> => {
+    try {
+      const response = await api.get('/');
+      return response.status === 200;
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return false;
+    }
+  },
+};
+
+export default api;

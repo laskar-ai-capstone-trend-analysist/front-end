@@ -1,53 +1,70 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { ProductSearch } from '@/components/product/ProductSearch';
 import { ProductGrid } from '@/components/product/ProductGrid';
 import { ProductModal } from '@/components/product/ProductModal';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { Button } from '@/components/ui/Button';
+import { RefreshCw, AlertCircle, TrendingUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Product } from '@/lib/types';
+
+// Import custom hooks
 import { useProducts } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useCategories';
-import { useReviews } from '@/hooks/useReviews';
-import { Product } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 export default function Home() {
-  const {
-    products,
-    loading,
-    error,
-    searchProducts,
-    filterByCategory,
-    refetch,
-  } = useProducts();
-  const { categories } = useCategories();
-  const { reviews, fetchReviews } = useReviews();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Use custom hooks for API integration
+  const {
+    products,
+    loading: productsLoading,
+    error: productsError,
+    refetch: refetchProducts,
+    searchProducts,
+    filterByCategory,
+  } = useProducts();
+
+  const {
+    categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
+
+  // Combined loading state
+  const loading = productsLoading || categoriesLoading;
+
+  // Combined error state
+  const error = productsError || categoriesError;
+
+  // Handlers
   const handleSearch = async (query: string) => {
-    if (query.trim()) {
+    try {
       await searchProducts(query);
-    } else {
-      // Reset to all products if search is empty
-      await refetch();
+    } catch (error) {
+      console.error('Search error:', error);
     }
   };
 
   const handleCategoryFilter = async (categoryId: number | null) => {
-    if (categoryId) {
-      await filterByCategory(categoryId);
-    } else {
-      // Reset to all products if no category selected
-      await refetch();
+    try {
+      if (categoryId === null) {
+        await refetchProducts();
+      } else {
+        await filterByCategory(categoryId);
+      }
+    } catch (error) {
+      console.error('Filter error:', error);
     }
   };
 
-  const handleViewDetails = async (product: Product) => {
+  const handleViewDetails = (product: Product) => {
     setSelectedProduct(product);
-    await fetchReviews(product.id);
     setIsModalOpen(true);
   };
 
@@ -56,37 +73,33 @@ export default function Home() {
     setSelectedProduct(null);
   };
 
-  if (error) {
+  const handleRetry = () => {
+    refetchProducts();
+  };
+
+  // Global error state - show error page if critical error
+  if (error && !loading && products.length === 0) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-red-50 to-gray-50 flex items-center justify-center'>
+      <div className='min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20 flex items-center justify-center'>
         <div className='max-w-md mx-auto text-center p-8'>
-          <div className='w-20 h-20 mx-auto mb-6 bg-red-100 rounded-full flex items-center justify-center'>
-            <svg
-              className='w-10 h-10 text-red-500'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth={2}
-                d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z'
-              />
-            </svg>
-          </div>
-          <h1 className='text-2xl font-bold text-gray-900 mb-4'>
-            Terjadi Kesalahan
+          <AlertCircle className='w-16 h-16 text-red-500 mx-auto mb-4' />
+          <h1 className='text-2xl font-bold text-gray-900 mb-2'>
+            Tidak Dapat Memuat Data
           </h1>
           <p className='text-gray-600 mb-6'>{error}</p>
           <button
-            onClick={() => refetch()}
+            onClick={handleRetry}
             className={cn(
               'px-6 py-3 bg-blue-600 text-white rounded-lg font-medium',
-              'hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100',
+              'hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
               'transition-all duration-200'
             )}
+            disabled={loading}
           >
+            <RefreshCw
+              className={cn('w-4 h-4 mr-2 inline', loading && 'animate-spin')}
+            />
             Coba Lagi
           </button>
         </div>
@@ -108,7 +121,6 @@ export default function Home() {
               <ProductSearch
                 onSearch={handleSearch}
                 onCategoryFilter={handleCategoryFilter}
-                categories={categories}
                 isLoading={loading}
                 className='shadow-xl'
               />
@@ -136,7 +148,7 @@ export default function Home() {
                   onViewDetails={handleViewDetails}
                   loading={loading}
                   error={error}
-                  onRetry={refetch}
+                  onRetry={handleRetry}
                 />
               </div>
             </div>
@@ -163,7 +175,64 @@ export default function Home() {
                     <div className='text-4xl font-bold text-purple-600'>
                       24/7
                     </div>
-                    <div className='text-gray-600'>Update Real-time</div>
+                    <div className='text-gray-600'>Analisis Real-time</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Features Section */}
+          {!loading && (
+            <section className='py-16 bg-gradient-to-r from-blue-50 to-purple-50'>
+              <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
+                <div className='text-center mb-12'>
+                  <h2 className='text-3xl font-bold text-gray-900 mb-4'>
+                    Fitur Unggulan
+                  </h2>
+                  <p className='text-lg text-gray-600'>
+                    Platform analisis tren produk terlengkap dengan teknologi AI
+                  </p>
+                </div>
+
+                <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
+                  <div className='bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow'>
+                    <div className='w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4'>
+                      <TrendingUp className='w-6 h-6 text-blue-600' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-gray-900 mb-2'>
+                      Analisis Sentimen AI
+                    </h3>
+                    <p className='text-gray-600'>
+                      Dapatkan insights mendalam tentang sentimen pelanggan
+                      menggunakan teknologi AI sentiment analysis terdepan.
+                    </p>
+                  </div>
+
+                  <div className='bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow'>
+                    <div className='w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4'>
+                      <RefreshCw className='w-6 h-6 text-green-600' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-gray-900 mb-2'>
+                      Data Real-time
+                    </h3>
+                    <p className='text-gray-600'>
+                      Akses data produk dan review terbaru secara real-time
+                      langsung dari marketplace Tokopedia.
+                    </p>
+                  </div>
+
+                  <div className='bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow'>
+                    <div className='w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4'>
+                      <AlertCircle className='w-6 h-6 text-purple-600' />
+                    </div>
+                    <h3 className='text-xl font-semibold text-gray-900 mb-2'>
+                      Filter Cerdas
+                    </h3>
+                    <p className='text-gray-600'>
+                      Temukan produk yang tepat dengan sistem filter
+                      multi-kategori dan pencarian yang cerdas.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -177,7 +246,6 @@ export default function Home() {
         {/* Product Modal */}
         <ProductModal
           product={selectedProduct}
-          reviews={reviews}
           isOpen={isModalOpen}
           onClose={handleCloseModal}
         />

@@ -2,10 +2,11 @@
 import React from 'react';
 import { TrendingUp, Package, Activity, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { useCategories } from '@/hooks/useCategories';
 
 interface HeaderProps {
   productCount: number;
-  className?: string;
 }
 
 interface StatItemProps {
@@ -38,79 +39,38 @@ const StatItem: React.FC<StatItemProps> = ({
   </div>
 );
 
-export const Header: React.FC<HeaderProps> = ({ productCount, className }) => {
+export const Header: React.FC<HeaderProps> = ({ productCount }) => {
+  const { categories } = useCategories();
+
   return (
-    <header
-      className={cn(
-        'relative overflow-hidden',
-        'bg-gradient-to-br from-blue-600 via-blue-700 to-purple-800',
-        'border-b border-blue-500/20',
-        className
-      )}
-    >
+    <header className='relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white overflow-hidden'>
       {/* Background Pattern */}
-      <div className='absolute inset-0 opacity-10'>
-        <div className='absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-48 -translate-y-48' />
-        <div className='absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl translate-x-48 translate-y-48' />
-      </div>
+      <div className='absolute inset-0 bg-[url("data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Ccircle cx="30" cy="30" r="2"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")] opacity-30'></div>
 
-      {/* Animated Floating Elements */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
-        <div className='absolute top-1/4 left-1/4 w-4 h-4 bg-white/20 rounded-full animate-float' />
-        <div className='absolute top-3/4 right-1/4 w-6 h-6 bg-white/15 rounded-full animate-float-delayed' />
-        <div className='absolute top-1/2 right-1/3 w-3 h-3 bg-white/25 rounded-full animate-float-slow' />
-      </div>
+      {/* Content */}
+      <div className='relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16'>
+        <div className='text-center mb-12'>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className='text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent'
+          >
+            Tokopedia Trends
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className='text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto leading-relaxed'
+          >
+            Analisis mendalam tentang tren produk marketplace dengan AI
+            sentiment analysis
+          </motion.p>
+        </div>
 
-      <div className='relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        <div className='py-8 lg:py-12'>
-          {/* Main Title Section */}
-          <div className='text-center mb-8'>
-            <div className='flex items-center justify-center gap-4 mb-4'>
-              <div
-                className={cn(
-                  'flex items-center justify-center w-16 h-16',
-                  'bg-white/20 backdrop-blur-sm rounded-2xl',
-                  'border border-white/30 shadow-2xl',
-                  'animate-bounce-gentle'
-                )}
-              >
-                <TrendingUp className='w-8 h-8 text-white' />
-              </div>
-              <div className='text-left'>
-                <h1
-                  className={cn(
-                    'text-4xl lg:text-5xl font-bold text-white',
-                    'animate-fade-in-up'
-                  )}
-                >
-                  Tokopedia Trends
-                </h1>
-                <p
-                  className={cn(
-                    'text-blue-100 text-lg mt-2',
-                    'animate-fade-in-up'
-                  )}
-                  style={{ animationDelay: '200ms' }}
-                >
-                  Analisis Tren Produk Marketplace
-                </p>
-              </div>
-            </div>
-
-            {/* Subtitle */}
-            <p
-              className={cn(
-                'text-blue-50/90 text-lg max-w-2xl mx-auto leading-relaxed',
-                'animate-fade-in-up'
-              )}
-              style={{ animationDelay: '400ms' }}
-            >
-              Temukan produk trending, analisis performa, dan dapatkan insights
-              mendalam tentang tren marketplace terkini
-            </p>
-          </div>
-
-          {/* Stats Section */}
+        {/* Stats */}
+        <div className='max-w-4xl mx-auto'>
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6'>
             <StatItem
               icon={<Package className='w-5 h-5 text-white' />}
@@ -121,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ productCount, className }) => {
             <StatItem
               icon={<Activity className='w-5 h-5 text-white' />}
               label='Kategori Aktif'
-              value='12+'
+              value={`${categories.length}+`}
               delay={800}
             />
             <StatItem
@@ -142,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({ productCount, className }) => {
           viewBox='0 0 1440 54'
           fill='currentColor'
         >
-          <path d='M0,22 C120,36 240,36 360,22 C480,8 600,8 720,22 C840,36 960,36 1080,22 C1200,8 1320,8 1440,22 L1440,54 L0,54 Z' />
+          <path d='M0,22L48,28C96,34,192,46,288,46C384,46,480,34,576,32C672,30,768,38,864,44C960,50,1056,54,1152,50C1248,46,1344,34,1392,28L1440,22V54H1392C1344,54,1248,54,1152,54C1056,54,960,54,864,54C768,54,672,54,576,54C480,54,384,54,288,54C192,54,96,54,48,54H0V22Z' />
         </svg>
       </div>
     </header>
