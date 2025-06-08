@@ -1,6 +1,6 @@
 // src/lib/api.ts
 import axios from 'axios';
-import { Product, Review, Category, TrendData, SentimentData } from './types';
+import { Product, Review, Category, SentimentData } from './types';
 import { debug } from './debug';
 import { errorLogger } from './errorLogger';
 import { performanceMonitor } from './performance';

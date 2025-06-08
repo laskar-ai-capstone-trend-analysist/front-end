@@ -1,5 +1,5 @@
 // src/hooks/useProducts.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Product } from '@/lib/types';
 import { productsApi } from '@/lib/api';
 import { debug } from '@/lib/debug';
@@ -20,7 +20,7 @@ export const useProducts = () => {
     };
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     const operationName = 'fetchProducts';
     try {
       debug.info(`Starting ${operationName}`);
@@ -31,7 +31,8 @@ export const useProducts = () => {
 
       const data = await productsApi.getAll();
 
-      debug.stateChange('products', products.length, data.length);
+      // ✅ Hapus products.length dari debug log untuk menghindari dependency issue
+      debug.stateChange('products', 0, data.length);
       setProducts(data);
 
       const duration = performanceMonitor.end(operationName);
@@ -53,55 +54,58 @@ export const useProducts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // ✅ Dependency array tetap kosong
 
-  const searchProducts = async (query: string) => {
-    const operationName = 'searchProducts';
+  const searchProducts = useCallback(
+    async (query: string) => {
+      const operationName = 'searchProducts';
 
-    if (!query.trim()) {
-      debug.info(`${operationName}: Empty query, fetching all products`);
-      await fetchProducts();
-      return;
-    }
+      if (!query.trim()) {
+        debug.info(`${operationName}: Empty query, fetching all products`);
+        await fetchProducts();
+        return;
+      }
 
-    try {
-      debug.info(`Starting ${operationName}`, { query });
-      performanceMonitor.start(operationName, { query });
+      try {
+        debug.info(`Starting ${operationName}`, { query });
+        performanceMonitor.start(operationName, { query });
 
-      setLoading(true);
-      setError(null);
+        setLoading(true);
+        setError(null);
 
-      // Ini akan menggunakan endpoint /getAllProductsByName setelah update api.ts
-      const data = await productsApi.search(query);
+        const data = await productsApi.search(query);
 
-      debug.stateChange('products', products.length, data.length);
-      setProducts(data);
+        // ✅ Hapus products.length dari debug log
+        debug.stateChange('products', 0, data.length);
+        setProducts(data);
 
-      const duration = performanceMonitor.end(operationName);
-      debug.info(`${operationName} completed in ${duration?.toFixed(2)}ms`, {
-        query,
-        resultsCount: data.length,
-      });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : 'Terjadi kesalahan saat mencari produk';
+        const duration = performanceMonitor.end(operationName);
+        debug.info(`${operationName} completed in ${duration?.toFixed(2)}ms`, {
+          query,
+          resultsCount: data.length,
+        });
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'Terjadi kesalahan saat mencari produk';
 
-      errorLogger.logComponentError(
-        'useProducts',
-        `${operationName} failed`,
-        err instanceof Error ? err : new Error(String(err))
-      );
-      setError(errorMessage);
+        errorLogger.logComponentError(
+          'useProducts',
+          `${operationName} failed`,
+          err instanceof Error ? err : new Error(String(err))
+        );
+        setError(errorMessage);
 
-      debug.error(`Error in ${operationName}:`, err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        debug.error(`Error in ${operationName}:`, err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchProducts]
+  );
 
-  const filterByCategory = async (categoryId: number) => {
+  const filterByCategory = useCallback(async (categoryId: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -117,21 +121,24 @@ export const useProducts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getProductById = async (id: number): Promise<Product | null> => {
-    try {
-      const product = await productsApi.getById(id);
-      return product;
-    } catch (err) {
-      console.error('Error in getProductById:', err);
-      return null;
-    }
-  };
+  const getProductById = useCallback(
+    async (id: number): Promise<Product | null> => {
+      try {
+        const product = await productsApi.getById(id);
+        return product;
+      } catch (err) {
+        console.error('Error in getProductById:', err);
+        return null;
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]); // ✅ Sekarang fetchProducts sudah di-memoize dengan useCallback
 
   return {
     products,
