@@ -8,12 +8,16 @@ const endpoints = [
   { name: 'Get All Products', url: '/getAllProduct' },
   { name: 'Get All Categories', url: '/getAllCategory' },
   { name: 'Get All Reviews', url: '/getAllReview' },
-  { name: 'Search Products', url: '/searchProduct?query=jam' },
+  { name: 'Search Products by Name', url: '/getAllProductsByName?name=jam' },
   {
     name: 'Get Products by Category',
     url: '/getAllProductByCategory?category=1',
   },
   { name: 'Get Reviews by Product', url: '/getAllReviewByProduct?product=1' },
+  {
+    name: 'Get Reviews by Category',
+    url: '/getAllReviewByCategory?category=1',
+  },
   { name: 'Get Sentiment by Product', url: '/getSentimentByProduct?product=1' },
 ];
 
