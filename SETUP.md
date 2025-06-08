@@ -3,23 +3,28 @@
 ## Quick Start Development
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### 2. Environment Setup
+
 Create `.env.local` file:
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
 NEXT_PUBLIC_DEBUG_MODE=true
 ```
 
 ### 3. Start Development Server
+
 ```bash
 npm run dev
 ```
 
 ### 4. Test API Connection
+
 ```bash
 npm run health-check
 ```
@@ -27,16 +32,19 @@ npm run health-check
 ## Production Setup
 
 ### 1. Build for Production
+
 ```bash
 npm run build:production
 ```
 
 ### 2. Start Production Server
+
 ```bash
 npm run start:production
 ```
 
 ### 3. Deploy Check
+
 ```bash
 npm run deploy:check
 ```
@@ -44,21 +52,24 @@ npm run deploy:check
 ## Backend Integration
 
 ### Prerequisites
+
 - Backend server running on `http://localhost:5000`
 - Database properly configured
 - All API endpoints available
 
 ### API Endpoints Used
+
 - `GET /` - Health check
 - `GET /getAllProduct` - Get all products
 - `GET /getAllCategory` - Get all categories
 - `GET /getAllReview` - Get all reviews
-- `GET /searchProduct?query=` - Search products
+- `GET /getAllProductsByName?name=` - Search products by name
 - `GET /getAllProductByCategory?category=` - Filter by category
 - `GET /getAllReviewByProduct?product=` - Get product reviews
 - `GET /getSentimentByProduct?product=` - Get sentiment analysis
 
 ### Testing API Integration
+
 ```bash
 # Test all endpoints
 npm run test:api
@@ -72,11 +83,13 @@ npm run health-check
 ### Common Issues
 
 1. **API Connection Failed**
+
    - Check if backend is running on port 5000
    - Verify `.env.local` has correct API_URL
    - Run `npm run health-check`
 
 2. **Build Errors**
+
    - Run `npm run type-check` to check TypeScript errors
    - Run `npm run lint:fix` to fix linting issues
 
@@ -93,11 +106,11 @@ npm run health-check
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:5000` |
-| `NEXT_PUBLIC_DEBUG_MODE` | Enable debug logging | `false` |
-| `NODE_ENV` | Environment mode | `development` |
+| Variable                 | Description          | Default                 |
+| ------------------------ | -------------------- | ----------------------- |
+| `NEXT_PUBLIC_API_URL`    | Backend API URL      | `http://localhost:5000` |
+| `NEXT_PUBLIC_DEBUG_MODE` | Enable debug logging | `false`                 |
+| `NODE_ENV`               | Environment mode     | `development`           |
 
 ## Development Workflow
 

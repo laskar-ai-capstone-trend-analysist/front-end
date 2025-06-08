@@ -8,7 +8,7 @@ const endpoints = [
   { name: 'Get All Products', url: '/getAllProduct' },
   { name: 'Get All Categories', url: '/getAllCategory' },
   { name: 'Get All Reviews', url: '/getAllReview' },
-  { name: 'Search Products by Name', url: '/getAllProductsByName?name=jam' },
+  { name: 'Search Products by Name', url: '/getAllProductsByName?name=jam' }, // ✅ Sudah benar
   {
     name: 'Get Products by Category',
     url: '/getAllProductByCategory?category=1',

@@ -24,7 +24,7 @@ api.interceptors.request.use(
     const requestId = `${config.method?.toUpperCase()}_${config.url}_${Date.now()}`;
     debug.apiCall(config.method || 'GET', config.url || '', config.data);
     performanceMonitor.start(`api-${requestId}`);
-    
+
     // Add request ID to config for response tracking
     config.metadata = { requestId };
     return config;
@@ -76,10 +76,14 @@ api.interceptors.response.use(
 
     console.error('API Error:', error);
     if (error.response?.status === 500) {
-      throw new Error('Server sedang mengalami gangguan. Silakan coba lagi nanti.');
+      throw new Error(
+        'Server sedang mengalami gangguan. Silakan coba lagi nanti.'
+      );
     }
     if (error.code === 'ECONNREFUSED') {
-      throw new Error('Tidak dapat terhubung ke server. Pastikan backend sudah berjalan.');
+      throw new Error(
+        'Tidak dapat terhubung ke server. Pastikan backend sudah berjalan.'
+      );
     }
     return Promise.reject(error);
   }
@@ -99,18 +103,23 @@ export const productsApi = {
     try {
       debug.info(`Starting ${operationName}`);
       const response = await api.get<ApiResponse<Product[]>>('/getAllProduct');
-      
+
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      
+
       debug.info(`${operationName} completed successfully`, {
-        count: response.data.data.length
+        count: response.data.data.length,
       });
-      
+
       return response.data.data;
     } catch (error) {
-      errorLogger.logApiError('GET', '/getAllProduct', undefined, `${operationName} failed`);
+      errorLogger.logApiError(
+        'GET',
+        '/getAllProduct',
+        undefined,
+        `${operationName} failed`
+      );
       console.error(`Error in ${operationName}:`, error);
       throw error;
     }
@@ -151,9 +160,13 @@ export const productsApi = {
 
   search: async (query: string): Promise<Product[]> => {
     try {
-      const response = await api.get<ApiResponse<Product[]>>(`/searchProduct`, {
-        params: { query },
-      });
+      // Ubah dari /searchProduct ke /getAllProductsByName
+      const response = await api.get<ApiResponse<Product[]>>(
+        `/getAllProductsByName`,
+        {
+          params: { name: query }, // Ubah parameter dari 'query' ke 'name'
+        }
+      );
       if (response.data.error) {
         throw new Error(response.data.message);
       }
@@ -221,9 +234,8 @@ export const reviewsApi = {
 export const categoriesApi = {
   getAll: async (): Promise<Category[]> => {
     try {
-      const response = await api.get<ApiResponse<Category[]>>(
-        '/getAllCategory'
-      );
+      const response =
+        await api.get<ApiResponse<Category[]>>('/getAllCategory');
       if (response.data.error) {
         throw new Error(response.data.message);
       }

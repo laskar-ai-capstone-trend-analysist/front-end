@@ -71,19 +71,17 @@ export const useProducts = () => {
       setLoading(true);
       setError(null);
 
+      // Ini akan menggunakan endpoint /getAllProductsByName setelah update api.ts
       const data = await productsApi.search(query);
 
       debug.stateChange('products', products.length, data.length);
       setProducts(data);
 
       const duration = performanceMonitor.end(operationName);
-      debug.info(
-        `${operationName} completed in ${duration?.toFixed(2)}ms`,
-        {
-          query,
-          resultsCount: data.length,
-        }
-      );
+      debug.info(`${operationName} completed in ${duration?.toFixed(2)}ms`, {
+        query,
+        resultsCount: data.length,
+      });
     } catch (err) {
       const errorMessage =
         err instanceof Error
