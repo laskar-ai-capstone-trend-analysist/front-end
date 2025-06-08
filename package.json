@@ -16,7 +16,7 @@
     "analyze": "ANALYZE=true npm run build",
     "dev:debug": "NODE_OPTIONS='--inspect' next dev",
     "test:api": "node scripts/test-api.mjs",
-    "health-check": "node scripts/health-check.js",
+    "health-check": "node scripts/health-check.mjs",
     "quick-start": "node scripts/quick-start.js",
     "build:production": "npm run clean && npm run type-check && npm run lint && npm run build",
     "start:production": "NODE_ENV=production npm run start",

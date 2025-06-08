@@ -6,7 +6,7 @@ import { errorLogger } from './errorLogger';
 import { performanceMonitor } from './performance';
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -108,11 +108,14 @@ export const productsApi = {
         throw new Error(response.data.message);
       }
 
+      // ✅ Fix: Handle null/undefined data
+      const products = response.data.data || [];
+
       debug.info(`${operationName} completed successfully`, {
-        count: response.data.data.length,
+        count: products.length,
       });
 
-      return response.data.data;
+      return products;
     } catch (error) {
       errorLogger.logApiError(
         'GET',
@@ -120,7 +123,7 @@ export const productsApi = {
         undefined,
         `${operationName} failed`
       );
-      console.error(`Error in ${operationName}:`, error);
+      console.error('Error fetching products:', error);
       throw error;
     }
   },
