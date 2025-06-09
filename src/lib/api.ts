@@ -8,10 +8,12 @@ import { performanceMonitor } from './performance';
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 
+console.log('🔧 API_BASE_URL:', API_BASE_URL); // Debug log
+
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // Increase timeout
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -75,14 +77,32 @@ api.interceptors.response.use(
     );
 
     console.error('API Error:', error);
-    if (error.response?.status === 500) {
-      throw new Error(
-        'Server sedang mengalami gangguan. Silakan coba lagi nanti.'
-      );
-    }
+    console.error('API Error Details:', {
+      message: error.message,
+      code: error.code,
+      config: {
+        method: error.config?.method,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        timeout: error.config?.timeout,
+      },
+      response: error.response
+        ? {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+          }
+        : 'No response received',
+    });
+
     if (error.code === 'ECONNREFUSED') {
       throw new Error(
-        'Tidak dapat terhubung ke server. Pastikan backend sudah berjalan.'
+        `Tidak dapat terhubung ke server di ${API_BASE_URL}. Pastikan backend sudah berjalan di port 5000.`
+      );
+    }
+    if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
+      throw new Error(
+        `Network error saat mengakses ${API_BASE_URL}. Periksa koneksi atau CORS configuration.`
       );
     }
     return Promise.reject(error);

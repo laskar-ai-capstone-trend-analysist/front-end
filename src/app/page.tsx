@@ -77,16 +77,22 @@ export default function Home() {
     refetchProducts();
   };
 
-  // Global error state - show error page if critical error
-  if (error && !loading && products.length === 0) {
+  // Error State dengan informasi lebih detail
+  if (error) {
     return (
-      <div className='min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/20 flex items-center justify-center'>
+      <div className='min-h-screen bg-gradient-to-br from-red-50 to-gray-50 flex items-center justify-center'>
         <div className='max-w-md mx-auto text-center p-8'>
-          <AlertCircle className='w-16 h-16 text-red-500 mx-auto mb-4' />
-          <h1 className='text-2xl font-bold text-gray-900 mb-2'>
+          <AlertCircle className='w-16 h-16 mx-auto mb-6 text-red-500' />
+          <h1 className='text-2xl font-bold text-gray-900 mb-4'>
             Tidak Dapat Memuat Data
           </h1>
-          <p className='text-gray-600 mb-6'>{error}</p>
+          <p className='text-gray-600 mb-4'>{error}</p>
+          <div className='text-sm text-gray-500 mb-6 bg-gray-100 p-3 rounded'>
+            <strong>Troubleshooting:</strong>
+            <br />• Pastikan backend berjalan di port 5000
+            <br />• Cek file .env.local
+            <br />• Periksa console untuk error detail
+          </div>
           <button
             onClick={handleRetry}
             className={cn(
