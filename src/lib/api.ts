@@ -109,6 +109,28 @@ api.interceptors.response.use(
   }
 );
 
+// Add retry mechanism for network errors
+const retryRequest = async (
+  fn: () => Promise<any>,
+  retries = 3
+): Promise<any> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    if (
+      retries > 0 &&
+      (error.code === 'ECONNREFUSED' ||
+        error.code === 'NETWORK_ERROR' ||
+        error.message === 'Network Error')
+    ) {
+      console.log(`Retrying request... ${retries} attempts left`);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
+      return retryRequest(fn, retries - 1);
+    }
+    throw error;
+  }
+};
+
 // API Response interface based on back-end response format
 interface ApiResponse<T> {
   error: boolean;
@@ -120,32 +142,43 @@ interface ApiResponse<T> {
 export const productsApi = {
   getAll: async (): Promise<Product[]> => {
     const operationName = 'productsApi.getAll';
-    try {
-      debug.info(`Starting ${operationName}`);
-      const response = await api.get<ApiResponse<Product[]>>('/getAllProduct');
 
-      if (response.data.error) {
-        throw new Error(response.data.message);
+    return retryRequest(async () => {
+      try {
+        debug.info(`Starting ${operationName}`);
+        const response =
+          await api.get<ApiResponse<Product[]>>('/getAllProduct');
+
+        if (response.data.error) {
+          throw new Error(response.data.message);
+        }
+
+        // ✅ Fix: Handle null/undefined data dengan multiple safety checks
+        let products = response.data.data;
+
+        if (!products) {
+          products = [];
+        } else if (!Array.isArray(products)) {
+          console.warn('Products data is not an array:', products);
+          products = [];
+        }
+
+        debug.info(`${operationName} completed successfully`, {
+          count: products.length,
+        });
+
+        return products;
+      } catch (error) {
+        errorLogger.logApiError(
+          'GET',
+          '/getAllProduct',
+          undefined,
+          `${operationName} failed`
+        );
+        console.error('Error fetching products:', error);
+        throw error;
       }
-
-      // ✅ Fix: Handle null/undefined data
-      const products = response.data.data || [];
-
-      debug.info(`${operationName} completed successfully`, {
-        count: products.length,
-      });
-
-      return products;
-    } catch (error) {
-      errorLogger.logApiError(
-        'GET',
-        '/getAllProduct',
-        undefined,
-        `${operationName} failed`
-      );
-      console.error('Error fetching products:', error);
-      throw error;
-    }
+    });
   },
 
   getById: async (id: number): Promise<Product> => {
@@ -156,6 +189,12 @@ export const productsApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
+
+      // ✅ Ensure product data exists
+      if (!response.data.data) {
+        throw new Error('Product not found');
+      }
+
       return response.data.data;
     } catch (error) {
       console.error('Error fetching product by ID:', error);
@@ -174,7 +213,14 @@ export const productsApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let products = response.data.data;
+      if (!products || !Array.isArray(products)) {
+        return [];
+      }
+
+      return products;
     } catch (error) {
       console.error('Error fetching products by category:', error);
       throw error;
@@ -183,17 +229,23 @@ export const productsApi = {
 
   search: async (query: string): Promise<Product[]> => {
     try {
-      // Ubah dari /searchProduct ke /getAllProductsByName
       const response = await api.get<ApiResponse<Product[]>>(
         `/getAllProductsByName`,
         {
-          params: { name: query }, // Ubah parameter dari 'query' ke 'name'
+          params: { name: query },
         }
       );
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let products = response.data.data;
+      if (!products || !Array.isArray(products)) {
+        return [];
+      }
+
+      return products;
     } catch (error) {
       console.error('Error searching products:', error);
       throw error;
@@ -209,7 +261,14 @@ export const reviewsApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let reviews = response.data.data;
+      if (!reviews || !Array.isArray(reviews)) {
+        return [];
+      }
+
+      return reviews;
     } catch (error) {
       console.error('Error fetching reviews:', error);
       throw error;
@@ -227,7 +286,14 @@ export const reviewsApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let reviews = response.data.data;
+      if (!reviews || !Array.isArray(reviews)) {
+        return [];
+      }
+
+      return reviews;
     } catch (error) {
       console.error('Error fetching reviews by product ID:', error);
       throw error;
@@ -245,7 +311,14 @@ export const reviewsApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let reviews = response.data.data;
+      if (!reviews || !Array.isArray(reviews)) {
+        return [];
+      }
+
+      return reviews;
     } catch (error) {
       console.error('Error fetching reviews by category:', error);
       throw error;
@@ -262,7 +335,14 @@ export const categoriesApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let categories = response.data.data;
+      if (!categories || !Array.isArray(categories)) {
+        return [];
+      }
+
+      return categories;
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;
@@ -270,7 +350,7 @@ export const categoriesApi = {
   },
 };
 
-// Sentiment Analysis API
+// Sentiment API
 export const sentimentApi = {
   getByProductId: async (productId: number): Promise<SentimentData[]> => {
     try {
@@ -283,7 +363,14 @@ export const sentimentApi = {
       if (response.data.error) {
         throw new Error(response.data.message);
       }
-      return response.data.data;
+
+      // ✅ Safe array handling
+      let sentiments = response.data.data;
+      if (!sentiments || !Array.isArray(sentiments)) {
+        return [];
+      }
+
+      return sentiments;
     } catch (error) {
       console.error('Error fetching sentiment data:', error);
       throw error;
@@ -291,12 +378,12 @@ export const sentimentApi = {
   },
 };
 
-// Health check API
+// Health API
 export const healthApi = {
   check: async (): Promise<boolean> => {
     try {
       const response = await api.get('/');
-      return response.status === 200;
+      return !response.data.error;
     } catch (error) {
       console.error('Health check failed:', error);
       return false;

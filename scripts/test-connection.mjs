@@ -18,7 +18,28 @@ async function testConnection() {
     console.log('✅ Products fetch successful:', {
       error: productsResponse.data.error,
       message: productsResponse.data.message,
+      dataType: Array.isArray(productsResponse.data.data)
+        ? 'array'
+        : typeof productsResponse.data.data,
       dataCount: productsResponse.data.data?.length || 0,
+      isNull: productsResponse.data.data === null,
+      isUndefined: productsResponse.data.data === undefined,
+    });
+
+    // Test getAllCategory
+    console.log('\n3. Testing getAllCategory...');
+    const categoriesResponse = await axios.get(
+      `${API_BASE_URL}/getAllCategory`
+    );
+    console.log('✅ Categories fetch successful:', {
+      error: categoriesResponse.data.error,
+      message: categoriesResponse.data.message,
+      dataType: Array.isArray(categoriesResponse.data.data)
+        ? 'array'
+        : typeof categoriesResponse.data.data,
+      dataCount: categoriesResponse.data.data?.length || 0,
+      isNull: categoriesResponse.data.data === null,
+      isUndefined: categoriesResponse.data.data === undefined,
     });
   } catch (error) {
     console.error('❌ Connection test failed:');

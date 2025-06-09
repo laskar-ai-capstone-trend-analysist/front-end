@@ -1,54 +1,75 @@
 // src/components/ui/SearchInput.tsx
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useCallback } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SearchInputProps {
-  placeholder?: string;
   onSearch: (query: string) => void;
-  debounceMs?: number;
-  isLoading?: boolean;
+  placeholder?: string;
+  loading?: boolean;
   className?: string;
+  debounceMs?: number;
 }
 
-export const SearchInput: React.FC<SearchInputProps> = ({
-  placeholder = 'Cari produk...',
+const SearchInput: React.FC<SearchInputProps> = ({
   onSearch,
-  debounceMs = 300,
-  isLoading = false,
+  placeholder = 'Cari produk...',
+  loading = false,
   className,
+  debounceMs = 300,
 }) => {
   const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
-  // Debounce effect
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, debounceMs);
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (searchQuery: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          onSearch(searchQuery.trim());
+        }, debounceMs);
+      };
+    })(),
+    [onSearch, debounceMs]
+  );
 
-    return () => clearTimeout(timer);
-  }, [query, debounceMs]);
-
-  // Trigger search when debounced query changes
-  useEffect(() => {
-    onSearch(debouncedQuery);
-  }, [debouncedQuery, onSearch]);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+    debouncedSearch(value);
+  };
 
   const handleClear = () => {
     setQuery('');
-    setDebouncedQuery('');
+    onSearch('');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSearch(query.trim());
   };
 
   return (
-    <div className={cn('relative group', className)}>
-      <div className='relative'>
+    <form onSubmit={handleSubmit} className={cn('relative', className)}>
+      <div
+        className={cn(
+          'relative flex items-center bg-white border rounded-lg transition-all duration-200',
+          isFocused
+            ? 'border-blue-500 ring-2 ring-blue-500 ring-opacity-20 shadow-md'
+            : 'border-gray-300 hover:border-gray-400',
+          loading && 'opacity-75'
+        )}
+      >
         {/* Search Icon */}
-        <div className='absolute left-4 top-1/2 transform -translate-y-1/2'>
-          {isLoading ? (
-            <Loader2 className='w-5 h-5 text-blue-500 animate-spin' />
+        <div className='flex items-center justify-center pl-4 pr-2'>
+          {loading ? (
+            <Loader2 className='w-5 h-5 text-gray-400 animate-spin' />
           ) : (
-            <Search className='w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors' />
+            <Search className='w-5 h-5 text-gray-400' />
           )}
         </div>
 
@@ -56,52 +77,57 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         <input
           type='text'
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleInputChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
+          disabled={loading}
           className={cn(
-            'w-full pl-12 pr-12 py-4 rounded-2xl',
-            'border-2 border-gray-200 bg-white',
+            'flex-1 py-3 px-2 bg-transparent border-none outline-none',
             'text-gray-900 placeholder-gray-500',
-            'focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100',
-            'transition-all duration-200',
-            'shadow-sm hover:shadow-md focus:shadow-lg',
-            isLoading && 'cursor-wait'
+            'disabled:cursor-not-allowed'
           )}
-          disabled={isLoading}
+          autoComplete='off'
         />
 
         {/* Clear Button */}
         {query && (
           <button
+            type='button'
             onClick={handleClear}
             className={cn(
-              'absolute right-4 top-1/2 transform -translate-y-1/2',
-              'p-1 rounded-full hover:bg-gray-100',
-              'text-gray-400 hover:text-gray-600',
-              'transition-all duration-200'
+              'p-2 mr-2 hover:bg-gray-100 rounded-md transition-colors',
+              'focus:outline-none focus:bg-gray-100'
             )}
-            disabled={isLoading}
+            disabled={loading}
           >
-            <X className='w-4 h-4' />
+            <X className='w-4 h-4 text-gray-400' />
           </button>
         )}
+
+        {/* Search Button */}
+        <button
+          type='submit'
+          disabled={loading || !query.trim()}
+          className={cn(
+            'px-4 py-2 mr-2 bg-blue-600 text-white rounded-md',
+            'hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'transition-all duration-200 text-sm font-medium'
+          )}
+        >
+          Cari
+        </button>
       </div>
 
-      {/* Search Indicator */}
-      {query && (
-        <div className='absolute top-full left-0 right-0 mt-2'>
-          <div className='text-xs text-gray-500 px-4'>
-            {isLoading ? (
-              <span className='flex items-center gap-1'>
-                <Loader2 className='w-3 h-3 animate-spin' />
-                {`Mencari "${query}"...`}
-              </span>
-            ) : (
-              <span>{`Menampilkan hasil untuk "${debouncedQuery}"`}</span>
-            )}
-          </div>
+      {/* Search Suggestions or Results Count (Optional) */}
+      {query && !loading && (
+        <div className='absolute top-full left-0 right-0 mt-1 text-xs text-gray-500 px-4'>
+          Tekan Enter untuk mencari "{query}"
         </div>
       )}
-    </div>
+    </form>
   );
 };
+
+export default SearchInput;

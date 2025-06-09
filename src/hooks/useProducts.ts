@@ -1,39 +1,29 @@
-// src/hooks/useProducts.ts
-import { useState, useEffect, useCallback } from 'react';
-import { Product } from '@/lib/types';
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { Product } from '@/types';
 import { productsApi } from '@/lib/api';
 import { debug } from '@/lib/debug';
-import { errorLogger } from '@/lib/errorLogger';
 import { performanceMonitor } from '@/lib/performance';
+import { errorLogger } from '@/lib/errorLogger';
 
-export const useProducts = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useProducts() {
+  const [products, setProducts] = useState<Product[]>([]); // ✅ Initialize as empty array
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    debug.componentMount('useProducts');
-    performanceMonitor.monitorWebVitals();
-
-    return () => {
-      debug.componentUnmount('useProducts');
-    };
-  }, []);
 
   const fetchProducts = useCallback(async () => {
     const operationName = 'fetchProducts';
     try {
-      debug.info(`Starting ${operationName}`);
       performanceMonitor.start(operationName);
-
       setLoading(true);
       setError(null);
 
       const data = await productsApi.getAll();
 
-      // ✅ Hapus products.length dari debug log untuk menghindari dependency issue
-      debug.stateChange('products', 0, data.length);
-      setProducts(data);
+      // ✅ Double check for safety
+      const safeData = Array.isArray(data) ? data : [];
+      setProducts(safeData);
 
       const duration = performanceMonitor.end(operationName);
       debug.info(`${operationName} completed in ${duration?.toFixed(2)}ms`);
@@ -42,61 +32,55 @@ export const useProducts = () => {
         err instanceof Error
           ? err.message
           : 'Terjadi kesalahan saat mengambil data produk';
-
       errorLogger.logComponentError(
         'useProducts',
         `${operationName} failed`,
         err instanceof Error ? err : new Error(String(err))
       );
       setError(errorMessage);
-
+      setProducts([]); // ✅ Set to empty array on error
       debug.error(`Error in ${operationName}:`, err);
     } finally {
       setLoading(false);
     }
-  }, []); // ✅ Dependency array tetap kosong
+  }, []);
 
   const searchProducts = useCallback(
     async (query: string) => {
       const operationName = 'searchProducts';
-
-      if (!query.trim()) {
-        debug.info(`${operationName}: Empty query, fetching all products`);
-        await fetchProducts();
-        return;
-      }
-
       try {
-        debug.info(`Starting ${operationName}`, { query });
-        performanceMonitor.start(operationName, { query });
+        if (!query.trim()) {
+          await fetchProducts();
+          return;
+        }
 
+        performanceMonitor.start(operationName, { query });
         setLoading(true);
         setError(null);
 
         const data = await productsApi.search(query);
 
-        // ✅ Hapus products.length dari debug log
-        debug.stateChange('products', 0, data.length);
-        setProducts(data);
+        // ✅ Safe data handling
+        const safeData = Array.isArray(data) ? data : [];
+        setProducts(safeData);
 
         const duration = performanceMonitor.end(operationName);
         debug.info(`${operationName} completed in ${duration?.toFixed(2)}ms`, {
           query,
-          resultsCount: data.length,
+          resultsCount: safeData.length,
         });
       } catch (err) {
         const errorMessage =
           err instanceof Error
             ? err.message
             : 'Terjadi kesalahan saat mencari produk';
-
         errorLogger.logComponentError(
           'useProducts',
           `${operationName} failed`,
           err instanceof Error ? err : new Error(String(err))
         );
         setError(errorMessage);
-
+        setProducts([]); // ✅ Set to empty array on error
         debug.error(`Error in ${operationName}:`, err);
       } finally {
         setLoading(false);
@@ -106,18 +90,36 @@ export const useProducts = () => {
   );
 
   const filterByCategory = useCallback(async (categoryId: number) => {
+    const operationName = 'filterByCategory';
     try {
+      performanceMonitor.start(operationName, { categoryId });
       setLoading(true);
       setError(null);
+
       const data = await productsApi.getByCategory(categoryId);
-      setProducts(data);
+
+      // ✅ Safe data handling
+      const safeData = Array.isArray(data) ? data : [];
+      setProducts(safeData);
+
+      const duration = performanceMonitor.end(operationName);
+      debug.info(`${operationName} completed in ${duration?.toFixed(2)}ms`, {
+        categoryId,
+        resultsCount: safeData.length,
+      });
     } catch (err) {
-      setError(
+      const errorMessage =
         err instanceof Error
           ? err.message
-          : 'Terjadi kesalahan saat memfilter produk'
+          : 'Terjadi kesalahan saat memfilter produk';
+      errorLogger.logComponentError(
+        'useProducts',
+        `${operationName} failed`,
+        err instanceof Error ? err : new Error(String(err))
       );
-      console.error('Error in filterByCategory:', err);
+      setError(errorMessage);
+      setProducts([]); // ✅ Set to empty array on error
+      debug.error(`Error in ${operationName}:`, err);
     } finally {
       setLoading(false);
     }
@@ -127,9 +129,9 @@ export const useProducts = () => {
     async (id: number): Promise<Product | null> => {
       try {
         const product = await productsApi.getById(id);
-        return product;
+        return product || null;
       } catch (err) {
-        console.error('Error in getProductById:', err);
+        console.error('Error fetching product by ID:', err);
         return null;
       }
     },
@@ -138,7 +140,7 @@ export const useProducts = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]); // ✅ Sekarang fetchProducts sudah di-memoize dengan useCallback
+  }, [fetchProducts]);
 
   return {
     products,
@@ -149,4 +151,4 @@ export const useProducts = () => {
     filterByCategory,
     getProductById,
   };
-};
+}

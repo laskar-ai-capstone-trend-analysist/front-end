@@ -1,13 +1,9 @@
+'use client';
+
 import React, { useEffect } from 'react';
-import Image from 'next/image';
-import { Product, Review } from '@/lib/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
-import { X, Star, Package, Calendar, TrendingUp } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Product } from '@/types';
+import { X, Star, Package, Calendar, TrendingUp, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useReviews } from '@/hooks/useReviews';
-import { useCategories } from '@/hooks/useCategories';
-import { useSentiment } from '@/hooks/useSentiment';
 
 interface ProductModalProps {
   product: Product | null;
@@ -15,270 +11,183 @@ interface ProductModalProps {
   onClose: () => void;
 }
 
-export const ProductModal: React.FC<ProductModalProps> = ({
+const ProductModal: React.FC<ProductModalProps> = ({
   product,
   isOpen,
   onClose,
 }) => {
-  const { reviews, fetchReviews, getAverageRating } = useReviews();
-  const { categories, getCategoryName } = useCategories();
-  const {
-    sentimentData,
-    fetchSentimentByProduct,
-    getSentimentSummary,
-    getSentimentColor,
-    getSentimentLabel,
-    loading: sentimentLoading,
-  } = useSentiment();
+  // Remove hooks that don't exist yet to avoid errors
+  // const { reviews, fetchReviews, getAverageRating } = useReviews();
+  // const { categories, getCategoryName } = useCategories();
+  // const { sentimentData, fetchSentimentByProduct, getSentimentSummary, getSentimentColor, getSentimentLabel, loading: sentimentLoading } = useSentiment();
 
-  useEffect(() => {
-    if (product && isOpen) {
-      fetchReviews(product.id);
-      fetchSentimentByProduct(product.id);
-    }
-  }, [product, isOpen, fetchReviews, fetchSentimentByProduct]);
+  const formatCurrency = (price: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(price);
+  };
 
-  if (!product) return null;
+  const formatDate = (date: string) => {
+    return new Intl.DateTimeFormat('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(new Date(date));
+  };
 
-  const averageRating = getAverageRating();
-  const hasDiscount = product.originalPrice > product.currentPrice;
-  const sentimentSummary = getSentimentSummary(product.id);
+  if (!isOpen || !product) return null;
 
   return (
-    <div
-      className={cn(
-        'fixed inset-0 z-50 flex items-center justify-center p-4',
-        'bg-black/50 backdrop-blur-sm transition-opacity duration-300',
-        isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      )}
-      onClick={onClose}
-    >
+    <div className='fixed inset-0 z-50 overflow-y-auto'>
+      {/* Backdrop */}
       <div
-        className={cn(
-          'bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto',
-          'transform transition-all duration-300',
-          isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className='p-6'>
-          {/* Header */}
-          <div className='flex items-start justify-between mb-6'>
-            <div className='flex-1'>
-              <div className='flex items-center gap-2 mb-2'>
-                <span className='px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full'>
-                  {getCategoryName(product.categoryId)}
-                </span>
-                {hasDiscount && (
-                  <span className='px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full'>
-                    -{product.discount.toFixed(0)}%
-                  </span>
-                )}
-              </div>
-              <h2 className='text-2xl font-bold text-gray-900 mb-4 leading-tight'>
-                {product.name}
-              </h2>
-            </div>
-            <button
-              onClick={onClose}
-              className='p-2 hover:bg-gray-100 rounded-full transition-colors'
-            >
-              <X className='w-6 h-6 text-gray-500' />
-            </button>
-          </div>
+        className='fixed inset-0 bg-black bg-opacity-50 transition-opacity'
+        onClick={onClose}
+      />
 
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+      {/* Modal */}
+      <div className='flex min-h-full items-center justify-center p-4'>
+        <div
+          className={cn(
+            'relative bg-white rounded-2xl shadow-xl max-w-4xl w-full',
+            'transform transition-all duration-300 max-h-[90vh] overflow-y-auto'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className='absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors'
+          >
+            <X className='w-5 h-5 text-gray-600' />
+          </button>
+
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 p-6'>
             {/* Product Image */}
-            <div className='space-y-4'>
-              <div className='aspect-square bg-gray-100 rounded-2xl overflow-hidden'>
+            <div className='aspect-square rounded-xl overflow-hidden bg-gray-100'>
+              {product.imageUrl ? (
                 <img
-                  src={product.imgUrl}
+                  src={product.imageUrl}
                   alt={product.name}
-                  className='w-full h-full object-cover hover:scale-105 transition-transform duration-300'
+                  className='w-full h-full object-cover'
+                  onError={(e) => {
+                    e.currentTarget.src = '/placeholder-product.jpg';
+                  }}
                 />
-              </div>
+              ) : (
+                <div className='w-full h-full flex items-center justify-center'>
+                  <Package className='w-16 h-16 text-gray-400' />
+                </div>
+              )}
             </div>
 
             {/* Product Details */}
-            <div className='space-y-6'>
+            <div className='flex flex-col'>
+              {/* Product Name */}
+              <h1 className='text-2xl font-bold text-gray-900 mb-4'>
+                {product.name}
+              </h1>
+
               {/* Rating */}
-              {reviews.length > 0 && (
-                <div className='flex items-center gap-2'>
+              {product.rating !== undefined && (
+                <div className='flex items-center mb-4'>
                   <div className='flex items-center'>
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <Star
-                        key={index}
-                        className={`w-5 h-5 ${
-                          index < Math.floor(averageRating)
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
+                    <Star className='w-5 h-5 fill-yellow-400 text-yellow-400' />
+                    <span className='ml-2 text-lg font-medium text-gray-700'>
+                      {Number(product.rating).toFixed(1)}
+                    </span>
                   </div>
-                  <span className='text-lg font-semibold text-gray-900'>
-                    {averageRating.toFixed(1)} ({reviews.length} ulasan)
-                  </span>
-                </div>
-              )}
-
-              {/* Sentiment Analysis */}
-              {sentimentSummary.total > 0 && (
-                <div className='bg-gray-50 rounded-xl p-4 space-y-3'>
-                  <h4 className='font-semibold text-gray-900 flex items-center gap-2'>
-                    <TrendingUp className='w-5 h-5 text-blue-600' />
-                    Analisis Sentimen Review
-                  </h4>
-
-                  <div className='space-y-2'>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-sm text-gray-600'>
-                        Sentimen Dominan:
-                      </span>
-                      <span
-                        className={cn(
-                          'font-semibold',
-                          getSentimentColor(product.id)
-                        )}
-                      >
-                        {getSentimentLabel(product.id)}
-                      </span>
-                    </div>
-
-                    {/* Sentiment Distribution */}
-                    <div className='space-y-2'>
-                      <div className='flex items-center justify-between text-sm'>
-                        <span className='text-green-600'>Positif</span>
-                        <span className='font-medium'>
-                          {sentimentSummary.positivePercentage}%
-                        </span>
-                      </div>
-                      <div className='w-full bg-gray-200 rounded-full h-2'>
-                        <div
-                          className='bg-green-500 h-2 rounded-full'
-                          style={{
-                            width: `${sentimentSummary.positivePercentage}%`,
-                          }}
-                        />
-                      </div>
-
-                      <div className='flex items-center justify-between text-sm'>
-                        <span className='text-gray-600'>Netral</span>
-                        <span className='font-medium'>
-                          {sentimentSummary.neutralPercentage}%
-                        </span>
-                      </div>
-                      <div className='w-full bg-gray-200 rounded-full h-2'>
-                        <div
-                          className='bg-gray-400 h-2 rounded-full'
-                          style={{
-                            width: `${sentimentSummary.neutralPercentage}%`,
-                          }}
-                        />
-                      </div>
-
-                      <div className='flex items-center justify-between text-sm'>
-                        <span className='text-red-600'>Negatif</span>
-                        <span className='font-medium'>
-                          {sentimentSummary.negativePercentage}%
-                        </span>
-                      </div>
-                      <div className='w-full bg-gray-200 rounded-full h-2'>
-                        <div
-                          className='bg-red-500 h-2 rounded-full'
-                          style={{
-                            width: `${sentimentSummary.negativePercentage}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {sentimentLoading && (
-                    <div className='flex items-center gap-2 text-sm text-gray-500'>
-                      <Loader2 className='w-4 h-4 animate-spin' />
-                      Menganalisis sentimen...
-                    </div>
-                  )}
+                  <span className='ml-2 text-gray-500'>(Rating produk)</span>
                 </div>
               )}
 
               {/* Price */}
-              <div className='flex items-center gap-3 mb-4'>
-                <span className='text-3xl font-bold text-green-600'>
-                  {formatCurrency(product.currentPrice)}
+              <div className='mb-6'>
+                <span className='text-3xl font-bold text-gray-900'>
+                  {formatCurrency(product.price)}
                 </span>
-                {hasDiscount && (
-                  <span className='text-xl text-gray-500 line-through'>
-                    {formatCurrency(product.originalPrice)}
-                  </span>
-                )}
+                {product.originalPrice &&
+                  product.originalPrice > product.price && (
+                    <div className='flex items-center space-x-3 mt-2'>
+                      <span className='text-lg text-gray-500 line-through'>
+                        {formatCurrency(product.originalPrice)}
+                      </span>
+                      <span className='px-2 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full'>
+                        {Math.round(
+                          ((product.originalPrice - product.price) /
+                            product.originalPrice) *
+                            100
+                        )}
+                        % OFF
+                      </span>
+                    </div>
+                  )}
               </div>
 
-              {/* Stock */}
-              <div className='flex items-center gap-2 mb-6'>
-                <Package className='w-5 h-5 text-gray-500' />
-                <span className='text-gray-600'>
-                  Stok tersedia:{' '}
-                  <span className='font-semibold'>{product.stock}</span>
-                </span>
-              </div>
+              {/* Stock Info */}
+              {product.stock !== undefined && (
+                <div className='mb-6'>
+                  <div className='flex items-center'>
+                    <Package className='w-5 h-5 text-gray-400 mr-2' />
+                    <span className='text-gray-700'>
+                      Stok:{' '}
+                      <span
+                        className={cn(
+                          'font-medium',
+                          product.stock > 0 ? 'text-green-600' : 'text-red-600'
+                        )}
+                      >
+                        {product.stock > 0
+                          ? `${product.stock} tersedia`
+                          : 'Habis'}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {product.description && (
+                <div className='mb-6'>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-2'>
+                    Deskripsi Produk
+                  </h3>
+                  <p className='text-gray-600 leading-relaxed'>
+                    {product.description}
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons */}
-              <div className='flex gap-3'>
-                <Button className='flex-1'>Lihat di Tokopedia</Button>
-                <Button variant='outline' onClick={onClose}>
+              <div className='flex space-x-4 mt-auto'>
+                <button
+                  className={cn(
+                    'flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg',
+                    'hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    'transition-colors duration-200 flex items-center justify-center',
+                    product.stock === 0 && 'bg-gray-400 cursor-not-allowed'
+                  )}
+                  disabled={product.stock === 0}
+                >
+                  {product.stock === 0 ? 'Stok Habis' : 'Lihat di Tokopedia'}
+                </button>
+
+                <button
+                  onClick={onClose}
+                  className='px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors'
+                >
                   Tutup
-                </Button>
+                </button>
               </div>
             </div>
           </div>
-
-          {/* Reviews Section */}
-          {reviews.length > 0 && (
-            <div className='mt-8 border-t border-gray-200 pt-8'>
-              <h3 className='text-lg font-semibold mb-6'>
-                Ulasan Pelanggan ({reviews.length})
-              </h3>
-              <div className='space-y-4 max-h-60 overflow-y-auto'>
-                {reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className='border-b border-gray-100 pb-4 last:border-b-0'
-                  >
-                    <div className='flex items-center justify-between mb-2'>
-                      <div className='flex items-center gap-2'>
-                        <div className='flex items-center'>
-                          {Array.from({ length: 5 }).map((_, index) => (
-                            <Star
-                              key={index}
-                              className={`w-4 h-4 ${
-                                index < review.rating
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className='text-sm font-medium'>
-                          {review.rating}/5
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-1 text-sm text-gray-500'>
-                        <Calendar className='w-4 h-4' />
-                        {formatDate(review.tanggal)}
-                      </div>
-                    </div>
-                    <p className='text-gray-700 text-sm leading-relaxed'>
-                      {review.review}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
 };
+
+// ✅ Gunakan default export
+export default ProductModal;

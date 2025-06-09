@@ -4,25 +4,35 @@
 export interface Product {
   id: number;
   name: string;
-  currentPrice: number;
-  originalPrice: number;
-  imgUrl: string;
-  stock: number;
+  price: number;
+  originalPrice?: number;
+  description?: string;
   categoryId: number;
-  discount: number;
-}
-
-export interface Review {
-  id: number;
-  productId: number;
-  rating: number;
-  review: string;
-  tanggal: string; // Format: "Tue, 01 Apr 2025 10:55:59 GMT"
+  rating?: number;
+  stock?: number;
+  imageUrl?: string;
+  reviewCount?: number;
 }
 
 export interface Category {
   id: number;
   name: string;
+  description?: string;
+}
+
+export interface Review {
+  id: number;
+  content: string;
+  rating: number;
+  createdAt: string;
+  productId: number;
+}
+
+export interface SentimentData {
+  id: number;
+  sentiment: string;
+  confidence: number;
+  productId: number;
 }
 
 // API Response interface sesuai dengan back-end format
@@ -30,14 +40,6 @@ export interface ApiResponse<T> {
   error: boolean;
   message: string;
   data: T;
-}
-
-// Sentiment analysis interface untuk future implementation
-export interface SentimentData {
-  productId: number;
-  sentiment_negative: number;
-  sentiment_neutral: number;
-  sentiment_positive: number;
 }
 
 // Extended interfaces untuk UI enhancement
